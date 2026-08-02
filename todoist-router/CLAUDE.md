@@ -25,11 +25,26 @@ Request flow on `POST /webhook`:
 
 ## Notification routing
 
-After the task lookup, `routeNotification(task)` picks which Pushcut notification to
-fire based on priority. **Todoist's API priority is inverted vs the UI: API `4` ===
-UI "P1" (urgent).** Priority 4 → `PUSHCUT_URGENT_NOTIFICATION_NAME`; everything else →
-`PUSHCUT_NOTIFICATION_NAME`. Each Pushcut notification carries its own sound (configured
-in the Pushcut app, not here), so different tiers = different sounds.
+After the task lookup, `routeNotification(task)` (in `routes.js`) picks which Pushcut
+notification to fire. Routing is a **declarative first-match-wins rule table** — the
+`ROUTES` array in `routes.js` is the ONE place to edit to add a new alert type. Each
+rule has an optional `when(task)` predicate and a Pushcut `name` + `title`; rules are
+evaluated top-to-bottom and the last rule (no `when`) is the catch-all default.
+
+**Precedence is rule order.** As shipped, label rules (`@bill`, `@health`, `@errand`)
+are checked *before* the priority rule, so a labeled P1 task fires its label sound, not
+the urgent sound. Move the priority rule above the label block if you want urgent to
+always win.
+
+**Todoist's API priority is inverted vs the UI: API `4` === UI "P1" (urgent).**
+
+Each Pushcut notification carries its own sound (configured in the Pushcut app, not
+here), so different rules = different sounds. To add one:
+1. Create the notification (with its sound) in the Pushcut app.
+2. Add a rule to `ROUTES` in `routes.js` — match on `task.labels`, `task.priority`,
+   `task.project_id`, `task.content`, etc. (`hasLabel(task, 'name')` helper provided).
+3. Optionally expose its name as an env var via `env('PUSHCUT_..._NAME', 'Default')`
+   so it's swappable without a code edit; deploy.
 
 `GET /` is a health check (used by Railway; returns `todoist-router ok`).
 

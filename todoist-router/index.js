@@ -1,5 +1,6 @@
 const express = require('express')
 const crypto = require('crypto')
+const { routeNotification } = require('./routes')
 
 const app = express()
 const PORT = process.env.PORT || 3000
@@ -24,14 +25,8 @@ async function fetchTask(itemId) {
   return res.json()
 }
 
-// Pick the Pushcut notification (and title) by task priority.
-// NOTE: Todoist's API priority is INVERTED vs the UI — API 4 === UI "P1" (urgent).
-function routeNotification(task) {
-  const urgent = process.env.PUSHCUT_URGENT_NOTIFICATION_NAME || 'UrgentTask'
-  const normal = process.env.PUSHCUT_NOTIFICATION_NAME || 'TodoistTaskReminder'
-  if (task.priority === 4) return { name: urgent, title: '🔴 Urgent' }
-  return { name: normal, title: 'Reminder' }
-}
+// routeNotification lives in ./routes.js — a declarative first-match-wins rule
+// table. Add new alert types there; the webhook engine below never changes.
 
 async function sendPushcut(name, { title, text }) {
   const res = await fetch(`https://api.pushcut.io/v1/notifications/${encodeURIComponent(name)}`, {
