@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.zachbines.tz-reminder</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/usr/bin/python3</string>
+        <string>/Users/zachbines/ai-learning/zb-ai-assistant/tz-reminder/tz_reminder.py</string>
+    </array>
+
+    <!-- Run every day at 7:00 AM local time -->
+    <key>StartCalendarInterval</key>
+    <dict>
+        <key>Hour</key>
+        <integer>7</integer>
+        <key>Minute</key>
+        <integer>0</integer>
+    </dict>
+
+    <!-- If the Mac was asleep at 7 AM, run as soon as it wakes -->
+    <key>RunAtLoad</key>
+    <false/>
+
+    <key>StandardOutPath</key>
+    <string>/Users/zachbines/ai-learning/zb-ai-assistant/tz-reminder/tz-reminder.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/zachbines/ai-learning/zb-ai-assistant/tz-reminder/tz-reminder.log</string>
+</dict>
+</plist>

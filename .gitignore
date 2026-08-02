@@ -1,0 +1,20 @@
+# === Secrets — never commit ===
+# todoist-router runtime secrets
+.env
+.env.*
+!.env.example
+# tz-reminder Gmail app password / SMTP config
+config.json
+!config.example.json
+
+# === Dependencies / build ===
+node_modules/
+npm-debug.log*
+
+# === Logs ===
+*.log
+tz-reminder/tz-reminder.log
+
+# === OS / editor cruft ===
+.DS_Store
+.tmp/

@@ -1,0 +1,19 @@
+{
+  "note_title": "T/Z Task Manager",
+  "smtp": {
+    "host": "smtp.gmail.com",
+    "port": 465,
+    "user": "zachbines@gmail.com",
+    "app_password": "PASTE_16_CHAR_APP_PASSWORD_HERE",
+    "from_name": "T/Z Task Manager",
+    "from_email": "zachbines@gmail.com"
+  },
+  "people": {
+    "zach":   { "name": "Zach",   "email": "zachbines@gmail.com" },
+    "taylor": { "name": "Taylor", "email": "tnellesmcgee@gmail.com" }
+  },
+  "test_mode": true,
+  "test_redirect": {
+    "taylor": "zachbines+fortayloractually@gmail.com"
+  }
+}
