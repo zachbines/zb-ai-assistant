@@ -28,16 +28,27 @@ async function fetchTask(itemId) {
 // routeNotification lives in ./routes.js — a declarative first-match-wins rule
 // table. Add new alert types there; the webhook engine below never changes.
 
-async function sendPushcut(name, { title, text }) {
+async function sendPushcut(name, { title, text, url }) {
+  const payload = { title, text }
+  if (url) {
+    // Tapping the notification opens the task; plus an explicit button.
+    payload.defaultAction = { url }
+    payload.actions = [{ name: 'Open in Todoist', url }]
+  }
   const res = await fetch(`https://api.pushcut.io/v1/notifications/${encodeURIComponent(name)}`, {
     method: 'POST',
     headers: {
       'API-Key': process.env.PUSHCUT_API_KEY,
       'Content-Type': 'application/json'
     },
-    body: JSON.stringify({ title, text })
+    body: JSON.stringify(payload)
   })
   if (!res.ok) throw new Error(`pushcut ${res.status} ${await res.text()}`)
+}
+
+// Universal link — opens the task in the Todoist app if installed, else the web app.
+function todoistTaskUrl(task) {
+  return `https://app.todoist.com/app/task/${task.id}`
 }
 
 // Health check (Railway pings this; also handy to open in a browser).
@@ -54,7 +65,10 @@ app.post('/webhook', async (req, res) => {
   try {
     const task = await fetchTask(reminder.item_id)
     const route = routeNotification(task)
-    await sendPushcut(route.name, { title: route.title, text: task.content })
+    // Task name is the headline; tier label + due time are the subtitle.
+    const due = task.due && task.due.string
+    const text = due ? `${route.title} · ${due}` : route.title
+    await sendPushcut(route.name, { title: task.content, text, url: todoistTaskUrl(task) })
   } catch (err) {
     console.error('push failed:', err)
   }
