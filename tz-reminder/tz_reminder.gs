@@ -142,22 +142,25 @@ function isDocFresh_(doc) {
   const today = startOfDay_(new Date());
 
   const docDate = parseDocDate_(doc.getBody().getText());
-  if (docDate) {
-    const age = daysBetween_(docDate, today);
-    if (age < 0 || age >= maxDays) {
-      Logger.log('List date ' + docDate.toDateString() + ' is ' + age +
-                 ' day(s) from today (max ' + maxDays + ') — skipping stale send.');
-      return false;
-    }
-    return true;
+
+  // Fail closed: no readable date at the top → do NOT send. This matches the
+  // "update every week" contract — a stale or missing date pauses the emails.
+  // NOTE: the date must be TYPED TEXT (e.g. "Aug 6, 2026"). Google Docs date
+  // smart chips are not readable via getText(), so a chip reads as "no date"
+  // and (correctly) blocks the send. Do not fall back to the Doc's last-edited
+  // time — any edit (even setting an old date to pause) refreshes it, which
+  // would defeat the guard.
+  if (!docDate) {
+    Logger.log('No readable date at top of Doc — skipping send. Type the date as ' +
+               'text like "' + Utilities.formatDate(today, Session.getScriptTimeZone(), 'MMM d, yyyy') +
+               '" (date smart chips are NOT readable by the script).');
+    return false;
   }
 
-  // No date found — fall back to when the Doc was last edited.
-  const updated = startOfDay_(DriveApp.getFileById(doc.getId()).getLastUpdated());
-  const age = daysBetween_(updated, today);
-  if (age >= maxDays) {
-    Logger.log('Doc last edited ' + updated.toDateString() + ' (' + age +
-               ' days ago, max ' + maxDays + ') and no date at top — skipping stale send.');
+  const age = daysBetween_(docDate, today);
+  if (age < 0 || age >= maxDays) {
+    Logger.log('List date ' + docDate.toDateString() + ' is ' + age +
+               ' day(s) from today (max ' + maxDays + ') — skipping stale send.');
     return false;
   }
   return true;

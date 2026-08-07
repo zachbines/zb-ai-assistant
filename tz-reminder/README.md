@@ -63,9 +63,23 @@ Rules:
 
 To avoid re-sending a week-old list if you forget to update the Doc, the
 scheduled 7 AM run only fires while the list is fresh: today must be within
-`freshness.maxDays` (7) of the **date at the top of the Doc**. If no date is
-found there, it falls back to the Doc's last-edited time. **Manual sends** from
-the "T/Z Tasks" menu always go through, regardless of freshness.
+`freshness.maxDays` (7) of the **date at the top of the Doc**.
+
+**The date must be TYPED TEXT** (e.g. `Aug 6, 2026`, `2026-08-06`, or
+`8/6/2026`) — **not a date smart chip**. Apps Script's `getText()` cannot read
+smart chips, so a chip reads as "no date".
+
+The guard **fails closed**: if there's no readable, fresh date at the top, the
+scheduled send is **skipped** (it does *not* guess from the Doc's last-edited
+time — any edit, even setting an old date to pause, would refresh that and
+defeat the guard). Practical upshots:
+- To **pause** emails, set the date to more than 7 days ago (or remove it).
+- To **resume**, type a current date at the top each week.
+- If emails unexpectedly stop, check that the top date is *typed text* and
+  within 7 days — a smart chip is the usual culprit.
+
+**Manual sends** from the "T/Z Tasks" menu always go through, regardless of
+freshness.
 
 ## One-time setup (live version)
 
