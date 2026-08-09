@@ -25,11 +25,15 @@ async function fetchTask(itemId) {
   return res.json()
 }
 
-// routeNotification lives in ./routes.js — a declarative first-match-wins rule
-// table. Add new alert types there; the webhook engine below never changes.
+// routeNotification lives in ./routes.js — a declarative first-match-wins table
+// that picks the SOUND + subtitle label per task. Add new alert types there; the
+// webhook engine below never changes. Everything fires to one Pushcut
+// notification (PUSHCUT_NOTIFICATION_NAME); the sound is set per task.
 
-async function sendPushcut(name, { title, text, url }) {
+async function sendPushcut(name, { title, text, url, sound }) {
   const payload = { title, text }
+  // A payload sound overrides the notification's configured sound; omit to keep it.
+  if (sound) payload.sound = sound
   if (url) {
     // Tapping the notification opens the task; plus an explicit button.
     payload.defaultAction = { url }
@@ -65,10 +69,12 @@ app.post('/webhook', async (req, res) => {
   try {
     const task = await fetchTask(reminder.item_id)
     const route = routeNotification(task)
-    // Task name is the headline; tier label + due time are the subtitle.
+    // Task name is the headline; tier label + due time are the subtitle; the
+    // sound is chosen by the route. All tiers use one Pushcut notification.
     const due = task.due && task.due.string
-    const text = due ? `${route.title} · ${due}` : route.title
-    await sendPushcut(route.name, { title: task.content, text, url: todoistTaskUrl(task) })
+    const text = due ? `${route.label} · ${due}` : route.label
+    const notification = process.env.PUSHCUT_NOTIFICATION_NAME || 'TodoistTaskReminder'
+    await sendPushcut(notification, { title: task.content, text, url: todoistTaskUrl(task), sound: route.sound })
   } catch (err) {
     console.error('push failed:', err)
   }

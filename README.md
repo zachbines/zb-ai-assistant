@@ -46,24 +46,29 @@ Todoist tasks with due times — which then feed the router below.
 
 An Express webhook service (deployed on **Railway**) that receives Todoist
 `reminder:fired` events and fires a **Pushcut** notification on iOS, choosing the
-notification (and therefore the sound) by the task's labels/priority.
+**sound** by the task's labels/priority.
 
 **Flow:** Todoist reminder → `POST /webhook` → HMAC-verify → ack `200` →
-look up the task → `routeNotification()` picks a Pushcut notification → send.
+look up the task → `routeNotification()` picks a **sound + label** → send to one
+Pushcut notification.
+
+Everything fires to a single Pushcut notification (`PUSHCUT_NOTIFICATION_NAME`);
+the per-task sound is set in the payload (a payload `sound` overrides the
+notification's configured sound), so there's no separate notification per tier.
 
 **Adding a new alert type is a one-line data edit** in
-[`todoist-router/routes.js`](todoist-router/routes.js) — a first-match-wins rule
-table. Each rule matches on `task.labels` / `task.priority` / `task.project_id` /
-`task.content` and names a Pushcut notification:
+[`todoist-router/routes.js`](todoist-router/routes.js) — a first-match-wins table.
+Each rule matches on `task.labels` / `task.priority` / `task.project_id` /
+`task.content` and sets a `sound` + subtitle `label`:
 
 ```js
-{ when: (t) => hasLabel(t, 'bill'), name: env('PUSHCUT_BILL_NOTIFICATION_NAME', 'BillDue'), title: '💸 Bill due' },
+{ when: (t) => hasLabel(t, 'bill'), sound: 'problem', label: '💸 Bill due' },
 ```
 
-Steps to add one: create the notification (with its sound) in the Pushcut app →
-add a rule to `ROUTES` → deploy. **Rule order = precedence** (label rules are
-checked before the priority tier as shipped). Full detail:
-[`todoist-router/CLAUDE.md`](todoist-router/CLAUDE.md).
+Steps to add one: add a rule to `RULES` → deploy. **No new Pushcut notification
+needed** — built-in sounds work as-is; custom sounds must be imported into Pushcut
+by name. **Rule order = precedence** (label rules are checked before the priority
+tier as shipped). Full detail: [`todoist-router/CLAUDE.md`](todoist-router/CLAUDE.md).
 
 **Run / deploy:**
 ```bash

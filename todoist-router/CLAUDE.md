@@ -25,26 +25,35 @@ Request flow on `POST /webhook`:
 
 ## Notification routing
 
-After the task lookup, `routeNotification(task)` (in `routes.js`) picks which Pushcut
-notification to fire. Routing is a **declarative first-match-wins rule table** — the
-`ROUTES` array in `routes.js` is the ONE place to edit to add a new alert type. Each
-rule has an optional `when(task)` predicate and a Pushcut `name` + `title`; rules are
-evaluated top-to-bottom and the last rule (no `when`) is the catch-all default.
+Every reminder fires to **one** Pushcut notification (`PUSHCUT_NOTIFICATION_NAME`);
+the **sound** is chosen per task and sent in the payload. This works because a
+payload `sound` overrides the notification's configured sound — so there is no
+need for a separate Pushcut notification per tier (that was the old model).
 
-**Precedence is rule order.** As shipped, label rules (`@bill`, `@health`, `@errand`)
-are checked *before* the priority rule, so a labeled P1 task fires its label sound, not
-the urgent sound. Move the priority rule above the label block if you want urgent to
-always win.
+`routeNotification(task)` (in `routes.js`) returns `{ sound, label }`. Routing is a
+**declarative first-match-wins table** — the `RULES` array in `routes.js` is the ONE
+place to edit. Each rule has an optional `when(task)` predicate and sets a `sound`
+(Pushcut sound; `''` = the notification's own configured sound) and a `label` (the
+subtitle tier tag). The last rule (no `when`) is the catch-all default.
+
+**Precedence is rule order.** As shipped, label rules (`bill`, `health`, `errand`)
+are checked *before* the priority rule, so a labeled P1 task uses its label sound, not
+the urgent sound. Move the priority rule above the label block to make urgent win.
 
 **Todoist's API priority is inverted vs the UI: API `4` === UI "P1" (urgent).**
 
-Each Pushcut notification carries its own sound (configured in the Pushcut app, not
-here), so different rules = different sounds. To add one:
-1. Create the notification (with its sound) in the Pushcut app.
-2. Add a rule to `ROUTES` in `routes.js` — match on `task.labels`, `task.priority`,
-   `task.project_id`, `task.content`, etc. (`hasLabel(task, 'name')` helper provided).
-3. Optionally expose its name as an env var via `env('PUSHCUT_..._NAME', 'Default')`
-   so it's swappable without a code edit; deploy.
+To add a new alert type — **one line, no new Pushcut notification**:
+1. Add a rule to `RULES` in `routes.js` — match on `task.labels`, `task.priority`,
+   `task.project_id`, `task.content`, etc. (`hasLabel(task, 'name')` helper provided)
+   and give it a `sound` + `label`.
+2. Deploy. Built-in Pushcut sounds (`vibrateOnly`, `system`, `subtle`, `question`,
+   `jobDone`, `problem`, `loud`, `lasers`) need no setup; a custom sound must be
+   imported into the Pushcut app by name on the receiving device.
+
+**Exception — Critical/DnD-piercing alerts:** a "Critical" alert that bypasses
+silent mode / Do Not Disturb is a *per-notification* property that a payload sound
+can't set. For that tier only, create a dedicated Critical notification in Pushcut
+and post to it by name.
 
 `GET /` is a health check (used by Railway; returns `todoist-router ok`).
 
@@ -53,8 +62,7 @@ here), so different rules = different sounds. To add one:
 - `TODOIST_CLIENT_SECRET` — shared secret for webhook HMAC verification (Todoist App Console).
 - `TODOIST_API_TOKEN` — personal API token used to look up task content by `item_id` (Todoist → Settings → Integrations → Developer).
 - `PUSHCUT_API_KEY` — Pushcut account API key.
-- `PUSHCUT_NOTIFICATION_NAME` — normal-task Pushcut notification name (defaults to `TodoistTaskReminder`).
-- `PUSHCUT_URGENT_NOTIFICATION_NAME` — urgent (P1) Pushcut notification name (defaults to `UrgentTask`).
+- `PUSHCUT_NOTIFICATION_NAME` — the single Pushcut notification every reminder fires to (defaults to `TodoistTaskReminder`). Per-task sounds are set in `routes.js`, not via env vars.
 - `PORT` — optional; Railway sets this automatically, defaults to 3000 locally.
 
 ## Deploy (Railway)
