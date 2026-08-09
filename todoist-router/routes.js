@@ -32,7 +32,7 @@ const RULES = [
   { when: (t) => hasLabel(t, 'errand'), sound: 'question', label: '🏃 Errand' },
 
   // --- Priority tiers (checked after labels) ------------------------------
-  { when: (t) => t.priority === 4, sound: 'loud', label: '🔴 Urgent' }, // UI P1
+  { when: (t) => t.priority === 4, sound: 'beedeedeep', label: '🔴 Urgent' }, // UI P1
 
   // --- Catch-all default (must stay last; no `when`) ----------------------
   { sound: '', label: 'Reminder' }, // '' = the notification's own configured sound
