@@ -32,21 +32,20 @@ const RULES = [
   { when: (t) => hasLabel(t, 'errand'), sound: 'question', label: '🏃 Errand' },
 
   // --- Priority tiers (checked after labels) ------------------------------
-  { when: (t) => t.priority === 4, sound: 'beedeedeep', label: '🔴 Urgent' }, // UI P1
+  // `critical: true` → sent via Pushover as an iOS Critical Alert (pierces the
+  // physical mute switch + DnD). Pushcut CANNOT do critical alerts (Apple denied
+  // it the entitlement), so the urgent tier uses Pushover instead. `sound` here
+  // is only the Pushcut FALLBACK sound used if Pushover isn't configured.
+  { when: (t) => t.priority === 4, critical: true, sound: 'beedeedeep', label: '🔴 Urgent' }, // UI P1
 
   // --- Catch-all default (must stay last; no `when`) ----------------------
   { sound: '', label: 'Reminder' }, // '' = the notification's own configured sound
-
-  // --- Escape hatch: a true "Critical" alert that pierces silent mode / Do
-  //     Not Disturb CANNOT be set via a payload sound — it's a per-notification
-  //     property. If you ever want that tier, create a dedicated Critical
-  //     notification in Pushcut and post to it by name for that case.
 ]
 
 // First matching rule wins; the catch-all (no `when`) always matches.
 function routeNotification(task) {
   const rule = RULES.find((r) => !r.when || r.when(task))
-  return { sound: rule.sound, label: rule.label }
+  return { sound: rule.sound, label: rule.label, critical: !!rule.critical }
 }
 
 module.exports = { routeNotification, RULES, hasLabel }

@@ -50,10 +50,29 @@ To add a new alert type — **one line, no new Pushcut notification**:
    `jobDone`, `problem`, `loud`, `lasers`) need no setup; a custom sound must be
    imported into the Pushcut app by name on the receiving device.
 
-**Exception — Critical/DnD-piercing alerts:** a "Critical" alert that bypasses
-silent mode / Do Not Disturb is a *per-notification* property that a payload sound
-can't set. For that tier only, create a dedicated Critical notification in Pushcut
-and post to it by name.
+## Critical alerts (urgent tier → Pushover)
+
+An iOS **Critical Alert** (pierces the physical mute switch + Do Not Disturb) can
+only be sent by an app holding Apple's Critical Alerts entitlement. **Pushcut does
+NOT have it** (Apple refused it), so Time-Sensitive is the most Pushcut can do —
+and that still respects the mute switch. **Pushover DOES have the entitlement**, so
+the urgent tier is routed through Pushover instead.
+
+A rule with **`critical: true`** in `routes.js` (currently priority 4 / UI P1) is
+sent via `sendPushover()` — `POST https://api.pushover.net/1/messages.json` with
+`priority=1` (delivered as a Critical Alert once the user enables Critical Alerts
+on-device; no ack required). Pushover has **no per-message "critical" flag** — it's
+`priority` (1 high or 2 emergency) **plus** the on-device Critical-Alerts setting.
+
+- If `PUSHOVER_TOKEN`/`PUSHOVER_USER_KEY` are **unset or the call fails**, the tier
+  **falls back to Pushcut** (using the rule's `sound`), so nothing goes silent.
+- The rule's `sound` is therefore the *Pushcut fallback* sound; the Pushover sound
+  is `PUSHOVER_SOUND` (default `siren`).
+- **Precedence caveat:** label rules run before the priority rule, so a P1 task that
+  *also* carries a label (e.g. `bill`) matches the label rule and is **not** critical.
+  Move the priority rule above the label block if P1 should always be critical.
+- `priority=2` (emergency, repeat-until-ack) is available via `PUSHOVER_PRIORITY=2`
+  (+ `PUSHOVER_RETRY`/`PUSHOVER_EXPIRE`).
 
 `GET /` is a health check (used by Railway; returns `todoist-router ok`).
 
@@ -63,6 +82,8 @@ and post to it by name.
 - `TODOIST_API_TOKEN` — personal API token used to look up task content by `item_id` (Todoist → Settings → Integrations → Developer).
 - `PUSHCUT_API_KEY` — Pushcut account API key.
 - `PUSHCUT_NOTIFICATION_NAME` — the single Pushcut notification every reminder fires to (defaults to `TodoistTaskReminder`). Per-task sounds are set in `routes.js`, not via env vars.
+- `PUSHOVER_TOKEN` / `PUSHOVER_USER_KEY` — app token + user key for the critical (urgent) tier. If unset, the urgent tier falls back to Pushcut (non-critical).
+- `PUSHOVER_SOUND` (default `siren`), `PUSHOVER_PRIORITY` (default `1`; `2` = emergency), `PUSHOVER_RETRY`/`PUSHOVER_EXPIRE` (priority 2 only) — optional Pushover tuning.
 - `PORT` — optional; Railway sets this automatically, defaults to 3000 locally.
 
 ## Deploy (Railway)

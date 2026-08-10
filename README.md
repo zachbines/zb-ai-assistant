@@ -56,6 +56,11 @@ Everything fires to a single Pushcut notification (`PUSHCUT_NOTIFICATION_NAME`);
 the per-task sound is set in the payload (a payload `sound` overrides the
 notification's configured sound), so there's no separate notification per tier.
 
+**Urgent tier → Pushover.** An iOS Critical Alert (pierces the physical mute switch
++ DnD) needs Apple's entitlement, which Pushcut lacks but **Pushover** has. So a rule
+marked `critical: true` (default: priority 4 / UI P1) is sent via Pushover instead
+(falls back to Pushcut if Pushover isn't configured).
+
 **Adding a new alert type is a one-line data edit** in
 [`todoist-router/routes.js`](todoist-router/routes.js) — a first-match-wins table.
 Each rule matches on `task.labels` / `task.priority` / `task.project_id` /
