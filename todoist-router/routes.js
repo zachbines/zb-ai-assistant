@@ -26,17 +26,17 @@ const hasLabel = (task, label) =>
   (task.labels || []).some((l) => l.toLowerCase() === label.toLowerCase())
 
 const RULES = [
-  // --- Label-based (add your granular types here — one line each) ----------
-  { when: (t) => hasLabel(t, 'bill'),   sound: 'problem',  label: '💸 Bill due' },
-  { when: (t) => hasLabel(t, 'health'), sound: 'subtle',   label: '🩺 Health' },
-  { when: (t) => hasLabel(t, 'errand'), sound: 'question', label: '🏃 Errand' },
-
-  // --- Priority tiers (checked after labels) ------------------------------
+  // --- Priority tiers FIRST, so P1 always wins (even if it also has a label) --
   // `critical: true` → sent via Pushover as an iOS Critical Alert (pierces the
   // physical mute switch + DnD). Pushcut CANNOT do critical alerts (Apple denied
   // it the entitlement), so the urgent tier uses Pushover instead. `sound` here
   // is only the Pushcut FALLBACK sound used if Pushover isn't configured.
   { when: (t) => t.priority === 4, critical: true, sound: 'beedeedeep', label: '🔴 Urgent' }, // UI P1
+
+  // --- Label-based (add your granular types here — one line each) ----------
+  { when: (t) => hasLabel(t, 'bill'),   sound: 'problem',  label: '💸 Bill due' },
+  { when: (t) => hasLabel(t, 'health'), sound: 'subtle',   label: '🩺 Health' },
+  { when: (t) => hasLabel(t, 'errand'), sound: 'question', label: '🏃 Errand' },
 
   // --- Catch-all default (must stay last; no `when`) ----------------------
   { sound: '', label: 'Reminder' }, // '' = the notification's own configured sound

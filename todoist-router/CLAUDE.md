@@ -36,9 +36,9 @@ place to edit. Each rule has an optional `when(task)` predicate and sets a `soun
 (Pushcut sound; `''` = the notification's own configured sound) and a `label` (the
 subtitle tier tag). The last rule (no `when`) is the catch-all default.
 
-**Precedence is rule order.** As shipped, label rules (`bill`, `health`, `errand`)
-are checked *before* the priority rule, so a labeled P1 task uses its label sound, not
-the urgent sound. Move the priority rule above the label block to make urgent win.
+**Precedence is rule order.** As shipped, the **priority (P1) rule is checked first**,
+so a P1 task is always urgent/critical even if it also carries a label; the label
+rules (`bill`, `health`, `errand`) apply to non-P1 tasks. Reorder to change this.
 
 **Todoist's API priority is inverted vs the UI: API `4` === UI "P1" (urgent).**
 
@@ -68,9 +68,8 @@ on-device; no ack required). Pushover has **no per-message "critical" flag** —
   **falls back to Pushcut** (using the rule's `sound`), so nothing goes silent.
 - The rule's `sound` is therefore the *Pushcut fallback* sound; the Pushover sound
   is `PUSHOVER_SOUND` (default `siren`).
-- **Precedence caveat:** label rules run before the priority rule, so a P1 task that
-  *also* carries a label (e.g. `bill`) matches the label rule and is **not** critical.
-  Move the priority rule above the label block if P1 should always be critical.
+- **Precedence:** the priority rule runs **first**, so a P1 task is always critical
+  even if it also carries a label. (Reorder `RULES` to change this.)
 - `priority=2` (emergency, repeat-until-ack) is available via `PUSHOVER_PRIORITY=2`
   (+ `PUSHOVER_RETRY`/`PUSHOVER_EXPIRE`).
 
