@@ -38,7 +38,7 @@ subtitle tier tag). The last rule (no `when`) is the catch-all default.
 
 **Precedence is rule order.** As shipped, the **priority (P1) rule is checked first**,
 so a P1 task is always urgent/critical even if it also carries a label; the label
-rules (`bill`, `health`, `errand`) apply to non-P1 tasks. Reorder to change this.
+rules (`bill`, `health`, `errand`, `nap`) apply to non-P1 tasks. Reorder to change this.
 
 **Todoist's API priority is inverted vs the UI: API `4` === UI "P1" (urgent).**
 
