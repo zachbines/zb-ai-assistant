@@ -37,7 +37,7 @@ const RULES = [
   { when: (t) => hasLabel(t, 'bill'),   sound: 'problem',  label: '💸 Bill due' },
   { when: (t) => hasLabel(t, 'health'), sound: 'subtle',   label: '🩺 Health' },
   { when: (t) => hasLabel(t, 'errand'), sound: 'question', label: '🏃 Errand' },
-  { when: (t) => hasLabel(t, 'nap'),    sound: 'subtle',   label: '🌙 Nap' }, // from the Nap Plan page
+  { when: (t) => hasLabel(t, 'nap'),    sound: 'i-did-it-message-tone',   label: '🌙 Nap' }, // from the Nap Plan page
 
   // --- Catch-all default (must stay last; no `when`) ----------------------
   { sound: '', label: 'Reminder' }, // '' = the notification's own configured sound
