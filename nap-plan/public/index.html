@@ -297,7 +297,7 @@ input[type=range]{flex:1;accent-color:var(--nap);min-width:0;min-height:28px}
 
   <section class="panel send" aria-labelledby="sendTitle">
     <h2 id="sendTitle">Send to Todoist</h2>
-    <p>Adds a timed task for each moment you pick to your Todoist Inbox, labeled nap.</p>
+    <p>Adds a timed task for each moment you pick to your Todoist Inbox, labeled nap. Nap starts alert 30 and 5 minutes before; nap ends alert 10 minutes before and right on time.</p>
     <div class="seg" role="radiogroup" aria-label="Which day">
       <label><input type="radio" name="day" id="dayToday" value="today" checked>Today</label>
       <label><input type="radio" name="day" id="dayTomorrow" value="tomorrow">Tomorrow</label>
@@ -854,10 +854,10 @@ function plannedEvents(){
   const list = [];
   view.naps.forEach((p, k) => {
     const len = Math.round(p.dur);
-    if ($('optStart').checked) list.push({at:p.start, content:'Nap ' + (k+1) + ' starts (' + dur(len) + ')', duration:len});
-    if ($('optEnd').checked) list.push({at:p.start + p.dur, content:'Nap ' + (k+1) + ' ends, time to wake up'});
+    if ($('optStart').checked) list.push({at:p.start, kind:'start', content:'Nap ' + (k+1) + ' starts (' + dur(len) + ')', duration:len});
+    if ($('optEnd').checked) list.push({at:p.start + p.dur, kind:'end', content:'Nap ' + (k+1) + ' ends, time to wake up'});
   });
-  if ($('optBed').checked) list.push({at:S.bed, content:'Bedtime'});
+  if ($('optBed').checked) list.push({at:S.bed, kind:'bed', content:'Bedtime'});
   if (!$('dayToday').checked) return {list, skipped:0};
   const d = new Date(), now = d.getHours() * 60 + d.getMinutes();
   const upcoming = list.filter(ev => Math.round(ev.at) > now);
@@ -897,7 +897,7 @@ async function send(){
   }
   const word = $('dayTomorrow').checked ? 'tomorrow' : 'today';
   const dayStr = dayKey(targetDay());
-  const tasks = list.map(ev => ({content:ev.content, dueString:word + ' at ' + dueClock(ev.at), duration:ev.duration}));
+  const tasks = list.map(ev => ({content:ev.content, kind:ev.kind, dueString:word + ' at ' + dueClock(ev.at), duration:ev.duration}));
   const n = tasks.length, plural = n > 1 ? 's' : '';
   sending = true; sendBtn.disabled = true;
   setStatus('Adding ' + n + ' reminder' + plural + '…');
@@ -920,9 +920,12 @@ async function send(){
   const added = body.added || 0;
   if (added) writeSent({day:dayStr, at:Date.now(), count:added});
 
-  if (res.ok){
+  if (res.ok && body.warning){
     writeCode(code); codeRow.hidden = true; codeInput.value = '';
-    setStatus('Added ' + n + ' reminder' + plural + ' for ' + word + '. Find them in your Todoist Inbox under the nap label.', 'good');
+    setStatus('Added ' + n + ' reminder' + plural + ' for ' + word + ", but couldn't set their alert times (" + body.warning + "). They'll alert at your usual Todoist reminder time.", 'bad');
+  } else if (res.ok){
+    writeCode(code); codeRow.hidden = true; codeInput.value = '';
+    setStatus('Added ' + n + ' reminder' + plural + ' for ' + word + '. Nap starts alert 30 and 5 minutes before; nap ends alert 10 minutes before and on time.', 'good');
   } else if (res.status === 401){
     writeCode(''); codeRow.hidden = false; codeInput.value = ''; codeInput.focus();
     setStatus("That passcode didn't match. Enter it again.", 'bad');

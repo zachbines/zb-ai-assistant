@@ -55,15 +55,16 @@ async function sendPushcut(name, { title, text, url, sound }) {
 // the physical mute switch + DnD once the user enables Critical Alerts on-device.
 // Returns true if sent, false if not configured or on failure (so the caller can
 // fall back to Pushcut). Never throws.
-async function sendPushover({ title, message, url, urlTitle }) {
+// `sound` / `priority` override the env defaults for one rule (routes.js `pushover`).
+async function sendPushover({ title, message, url, urlTitle, sound, priority }) {
   const token = process.env.PUSHOVER_TOKEN
   const user = process.env.PUSHOVER_USER_KEY
   if (!token || !user) return false // not set up yet → caller falls back to Pushcut
-  const priority = process.env.PUSHOVER_PRIORITY || '1' // 1 = high (critical, no ack); 2 = emergency (repeat-until-ack)
+  priority = String(priority || process.env.PUSHOVER_PRIORITY || '1') // 1 = high (critical, no ack); 2 = emergency (repeat-until-ack)
   const body = new URLSearchParams({
     token, user, title, message,
     priority,
-    sound: process.env.PUSHOVER_SOUND || 'siren',
+    sound: sound || process.env.PUSHOVER_SOUND || 'siren',
   })
   if (url) { body.set('url', url); body.set('url_title', urlTitle || 'Open in Todoist') }
   if (priority === '2') { // emergency requires retry/expire
@@ -110,7 +111,7 @@ app.post('/webhook', async (req, res) => {
 
     // Critical tier → Pushover (iOS Critical Alert, pierces mute switch + DnD).
     // If Pushover isn't configured (or fails), fall through to Pushcut.
-    if (route.critical && await sendPushover({ title: task.content, message: text, url, urlTitle: 'Open in Todoist' })) return
+    if (route.critical && await sendPushover({ title: task.content, message: text, url, urlTitle: 'Open in Todoist', ...route.pushover })) return
 
     // Everything else (and the critical fallback) → one Pushcut notification,
     // sound set per task in the payload.

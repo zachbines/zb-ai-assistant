@@ -37,7 +37,10 @@ const RULES = [
   { when: (t) => hasLabel(t, 'bill'),   sound: 'problem',  label: '💸 Bill due' },
   { when: (t) => hasLabel(t, 'health'), sound: 'subtle',   label: '🩺 Health' },
   { when: (t) => hasLabel(t, 'errand'), sound: 'question', label: '🏃 Errand' },
-  { when: (t) => hasLabel(t, 'nap'),    sound: 'i-did-it-message-tone',   label: '🌙 Nap' }, // from the Nap Plan page
+  // Nap Plan reminders must sound even on silent, so they go via Pushover like
+  // the urgent tier, but with their own gentler sound and never emergency mode.
+  { when: (t) => hasLabel(t, 'nap'), critical: true, pushover: { sound: 'pushover', priority: '1' },
+    sound: 'i-did-it-message-tone', label: '🌙 Nap' },
 
   // --- Catch-all default (must stay last; no `when`) ----------------------
   { sound: '', label: 'Reminder' }, // '' = the notification's own configured sound
@@ -46,7 +49,7 @@ const RULES = [
 // First matching rule wins; the catch-all (no `when`) always matches.
 function routeNotification(task) {
   const rule = RULES.find((r) => !r.when || r.when(task))
-  return { sound: rule.sound, label: rule.label, critical: !!rule.critical }
+  return { sound: rule.sound, label: rule.label, critical: !!rule.critical, pushover: rule.pushover || {} }
 }
 
 module.exports = { routeNotification, RULES, hasLabel }

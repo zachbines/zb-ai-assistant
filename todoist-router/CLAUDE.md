@@ -72,6 +72,10 @@ on-device; no ack required). Pushover has **no per-message "critical" flag** —
   even if it also carries a label. (Reorder `RULES` to change this.)
 - `priority=2` (emergency, repeat-until-ack) is available via `PUSHOVER_PRIORITY=2`
   (+ `PUSHOVER_RETRY`/`PUSHOVER_EXPIRE`).
+- A rule can override the Pushover sound/priority with `pushover: { sound, priority }`.
+  The `nap` label rule uses this: nap reminders are `critical: true` (they must sound on
+  silent) without the task being P1, with Pushover's gentler `pushover` sound at
+  priority 1, never emergency.
 
 `GET /` is a health check (used by Railway; returns `todoist-router ok`).
 
