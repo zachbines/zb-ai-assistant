@@ -1,0 +1,11 @@
+{
+  "name": "nap-plan",
+  "description": "Plan a baby's naps on a draggable timeline and send the reminders to Todoist",
+  "main": "server.js",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "start": "node server.js"
+  }
+}

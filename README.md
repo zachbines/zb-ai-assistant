@@ -1,6 +1,6 @@
 # zb-ai-assistant
 
-A personal monorepo of AI-assistant tooling: two always-on **services**, plus a
+A personal monorepo of AI-assistant tooling: three always-on **services**, plus a
 library of **skills** and **subagents** used inside Claude Code sessions.
 
 ```
@@ -9,6 +9,7 @@ zb-ai-assistant/
 ├── skills/          # Packaged skills — SKILL.md playbook + scripts/ (Skill tool / /name)
 ├── tz-reminder/     # SERVICE: daily task-reminder emails
 ├── todoist-router/  # SERVICE: Todoist reminders → Pushcut notifications
+├── nap-plan/        # SERVICE: baby nap planner web app → Todoist nap reminders
 └── CLAUDE.md        # Guidance for Claude Code working in this repo
 ```
 
@@ -86,6 +87,17 @@ Deploy: Railway service pointed at this repo with **Root Directory =
 register `https://<url>/webhook` as a Todoist webhook for `reminder:fired`.
 Reminders only fire on tasks with a **due time** — on Todoist Pro, enable
 **Settings → Reminders → Automatic reminders**.
+
+### 3. nap-plan — baby nap planner
+
+A one-page web app (deployed on **Railway**) for planning the day's naps on a
+draggable timeline: drag naps and awake windows, and the rest re-space to keep
+the day-sleep goal. **Send to Todoist** adds timed tasks labeled `nap`; the
+router above gives them the gentle nap sound.
+
+Deploy: Railway service pointed at this repo with **Root Directory =
+`nap-plan/`**; set `TODOIST_API_TOKEN` and `NAP_PLAN_PASSCODE` as service
+Variables. Full detail: [`nap-plan/README.md`](nap-plan/README.md).
 
 ---
 

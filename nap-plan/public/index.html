@@ -1,0 +1,808 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Nap Plan</title>
+<meta name="theme-color" content="#34457F">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Nap Plan">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 32 32%22%3E%3Crect width=%2232%22 height=%2232%22 rx=%228%22 fill=%22%2334457F%22/%3E%3Cpath d=%22M20 7a10 10 0 1 0 5 15A8 8 0 0 1 20 7z%22 fill=%22%23F6E2A4%22/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Young+Serif&family=Figtree:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one column — controls, a summary line, then the day as a track (horizontal on desktop, vertical on phones), then the written schedule and the Todoist hand-off. */
+:root{
+  --sky:#ECF0F2; --surface:#FFFFFF; --ink:#1C2633; --muted:#5B6979; --line:#D3DBE1;
+  --nap:#34457F; --nap-hi:#43579D; --nap-ink:#F2F4FF;
+  --awake:#F6E2A4; --awake-ink:#6A5113;
+  --ok:#2F6B47; --warn:#A8401C; --warn-bg:#FBE6DC;
+  --f-display:"Young Serif", Georgia, "Times New Roman", serif;
+  --f-body:"Figtree", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-mono:"DM Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --sky:#10151C; --surface:#18202A; --ink:#E6EBF1; --muted:#97A4B3; --line:#2B3542;
+    --nap:#8A9CE8; --nap-hi:#A3B2F0; --nap-ink:#0F1631;
+    --awake:#3A3221; --awake-ink:#EBCB7B;
+    --ok:#7CC79A; --warn:#F29C7A; --warn-bg:#3A2219;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --sky:#10151C; --surface:#18202A; --ink:#E6EBF1; --muted:#97A4B3; --line:#2B3542;
+  --nap:#8A9CE8; --nap-hi:#A3B2F0; --nap-ink:#0F1631;
+  --awake:#3A3221; --awake-ink:#EBCB7B;
+  --ok:#7CC79A; --warn:#F29C7A; --warn-bg:#3A2219;
+}
+*{box-sizing:border-box}
+:root{color-scheme:light;padding-top:env(safe-area-inset-top, 0px);padding-bottom:env(safe-area-inset-bottom, 0px)}
+[hidden]{display:none!important}
+img{max-width:100%}
+body{margin:0;background:var(--sky);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.5;
+  padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px));padding-block:28px 48px}
+.wrap{max-width:980px;margin:0 auto;display:flex;flex-direction:column;gap:22px}
+
+header{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:6px 20px}
+h1{font-family:var(--f-display);font-weight:400;font-size:2.4rem;line-height:1.05;margin:0;text-wrap:balance;letter-spacing:-.01em}
+h2{font-family:var(--f-display);font-weight:400;font-size:1.25rem;margin:0;text-wrap:balance}
+header p{margin:0;color:var(--muted)}
+
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:14px}
+.controls{padding:18px;display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:16px 18px}
+.field{display:flex;flex-direction:column;gap:6px;min-width:0}
+.field > label, .field > .lbl, .lbl{font-size:.72rem;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+input[type=time], input[type=number], input[type=password]{font:500 1rem var(--f-mono);font-variant-numeric:tabular-nums;color:var(--ink);background:var(--sky);
+  border:1px solid var(--line);border-radius:8px;padding:8px 10px;width:100%;min-width:0}
+input:focus-visible, button:focus-visible, .nap:focus-visible{outline:2px solid var(--nap);outline-offset:2px}
+.stepper{display:flex;align-items:stretch;gap:6px}
+.stepper input{text-align:center}
+.stepper button{flex:0 0 38px;font:600 1.1rem var(--f-body);color:var(--ink);background:var(--sky);border:1px solid var(--line);border-radius:8px;cursor:pointer}
+.stepper button:hover{border-color:var(--nap)}
+.hm{display:flex;gap:6px;align-items:center}
+.hm span{color:var(--muted);font-size:.85rem}
+.growth{grid-column:span 2}
+@media (max-width:520px){.growth{grid-column:1/-1}}
+.growth .row{display:flex;align-items:center;gap:12px}
+input[type=range]{flex:1;accent-color:var(--nap);min-width:0}
+.growth output{font:500 .9rem var(--f-mono);white-space:nowrap;min-width:9.5ch;text-align:right}
+
+.summary{display:flex;flex-wrap:wrap;align-items:center;gap:8px 18px}
+.stat{display:flex;align-items:baseline;gap:6px}
+.stat b{font-family:var(--f-display);font-weight:400;font-size:1.45rem;font-variant-numeric:tabular-nums}
+.stat span{color:var(--muted);font-size:.9rem}
+.actions{margin-left:auto;display:flex;gap:8px}
+.btn{font:600 .85rem var(--f-body);color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:7px 14px;cursor:pointer}
+.btn:hover{border-color:var(--nap)}
+.btn:disabled{opacity:.45;cursor:default}
+.btn.primary{background:var(--nap);border-color:var(--nap);color:var(--nap-ink);padding:10px 18px;font-size:.92rem}
+.btn.primary:hover:not(:disabled){background:var(--nap-hi)}
+.notice{background:var(--warn-bg);color:var(--warn);border-radius:10px;padding:10px 14px;font-weight:500}
+
+/* ---------- timeline ---------- */
+.timeline{padding:44px 22px 20px}
+.hint{color:var(--muted);font-size:.85rem;margin:14px 0 0;max-width:72ch}
+.track{position:relative;height:132px;background:var(--awake);border-radius:10px}
+.layer{position:absolute;inset:0}
+.tick{position:absolute;top:0;bottom:0;border-left:1px dashed color-mix(in srgb, var(--awake-ink) 22%, transparent)}
+.tick i{position:absolute;top:-24px;transform:translateX(-50%);font:400 .72rem var(--f-mono);color:var(--muted);font-style:normal;white-space:nowrap}
+.gap{position:absolute;z-index:1;display:flex;align-items:center;justify-content:center;pointer-events:none}
+.chip{pointer-events:auto;touch-action:none;cursor:ew-resize;display:inline-flex;flex-direction:column;align-items:center;gap:0;
+  font:500 .74rem/1.2 var(--f-mono);color:var(--awake-ink);background:color-mix(in srgb, var(--awake-ink) 10%, var(--awake));
+  border:1px dashed color-mix(in srgb, var(--awake-ink) 45%, transparent);border-radius:999px;padding:4px 10px;white-space:nowrap;user-select:none;-webkit-user-select:none}
+.chip:hover, .chip.dragging{background:color-mix(in srgb, var(--awake-ink) 18%, var(--awake));border-style:solid}
+.chip small{font:600 .6rem var(--f-body);text-transform:uppercase;letter-spacing:.08em;opacity:.85}
+.chip small::before{content:"⇆ "}
+.gap.tiny .chip{visibility:hidden}
+.end{position:absolute;font:600 .62rem var(--f-body);text-transform:uppercase;letter-spacing:.08em;color:var(--awake-ink);opacity:.85;pointer-events:none}
+.now{position:absolute;z-index:3;pointer-events:none;background:var(--warn)}
+.now::after{content:"now";position:absolute;font:600 .62rem var(--f-body);text-transform:uppercase;letter-spacing:.08em;color:var(--warn);background:var(--surface);padding:0 4px;border-radius:4px}
+
+.nap{position:absolute;z-index:2;background:var(--nap);color:var(--nap-ink);border-radius:9px;touch-action:none;cursor:grab;user-select:none;-webkit-user-select:none;
+  display:flex;flex-direction:column;justify-content:center;align-items:center;gap:1px;overflow:hidden;
+  box-shadow:0 1px 2px rgb(10 20 50 / .18);transition:box-shadow .15s}
+.nap:hover{background:var(--nap-hi)}
+.nap.dragging{cursor:grabbing;box-shadow:0 6px 18px rgb(10 20 50 / .3)}
+.nap .nm{font:600 .68rem var(--f-body);text-transform:uppercase;letter-spacing:.08em;opacity:.85}
+.nap .du{font:500 .95rem var(--f-mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+.nap .tm{font:400 .7rem var(--f-mono);opacity:.85;white-space:nowrap}
+.nap.narrow .tm{display:none}
+.nap.slim .nm{display:none}
+.nap .pin{position:absolute;top:5px;right:6px;width:12px;height:12px;display:none}
+.nap.pinned .pin{display:block}
+.nap.pinned{background-image:repeating-linear-gradient(135deg, transparent 0 7px, rgb(255 255 255 / .07) 7px 14px)}
+.h{position:absolute;z-index:1}
+.h::after{content:"";position:absolute;background:currentColor;opacity:.55;border-radius:2px}
+
+/* horizontal (default) */
+.timeline:not(.vertical) .nap{top:22px;bottom:22px}
+.timeline:not(.vertical) .gap{top:0;bottom:0}
+.timeline:not(.vertical) .h{top:0;bottom:0;width:14px;cursor:ew-resize}
+.timeline:not(.vertical) .h-start{left:0}.timeline:not(.vertical) .h-end{right:0}
+.timeline:not(.vertical) .h::after{top:50%;left:5px;width:3px;height:18px;transform:translateY(-50%)}
+.timeline:not(.vertical) .end{bottom:6px}
+.timeline:not(.vertical) .end.e-wake{left:8px}.timeline:not(.vertical) .end.e-bed{right:8px}
+.timeline:not(.vertical) .now{top:-6px;bottom:-6px;width:2px;margin-left:-1px}
+.timeline:not(.vertical) .now::after{bottom:-18px;left:50%;transform:translateX(-50%)}
+
+/* vertical (phones) */
+.timeline.vertical{padding:22px 16px 18px 62px}
+.timeline.vertical .track{height:auto}
+.timeline.vertical .tick{left:0;right:0;top:auto;bottom:auto;border-left:0;border-top:1px dashed color-mix(in srgb, var(--awake-ink) 22%, transparent)}
+.timeline.vertical .tick i{top:auto;left:-50px;transform:translateY(-50%)}
+.timeline.vertical .nap{left:44px;right:12px}
+.timeline.vertical .gap{left:44px;right:12px}
+.timeline.vertical .chip{cursor:ns-resize;flex-direction:row;gap:6px}
+.timeline.vertical .chip small::before{content:"⇅ "}
+.timeline.vertical .h{left:0;right:0;height:16px;cursor:ns-resize}
+.timeline.vertical .h-start{top:0}.timeline.vertical .h-end{bottom:0}
+.timeline.vertical .h::after{left:50%;top:6px;height:3px;width:24px;transform:translateX(-50%)}
+.timeline.vertical .end{left:8px;writing-mode:vertical-rl;transform:rotate(180deg)}
+.timeline.vertical .end.e-wake{top:8px}.timeline.vertical .end.e-bed{bottom:8px}
+.timeline.vertical .now{left:-8px;right:-8px;height:2px;margin-top:-1px}
+.timeline.vertical .now::after{right:0;top:-8px}
+
+/* ---------- schedule list ---------- */
+.schedule{padding:14px 18px 6px}
+.schedule ol{list-style:none;margin:4px 0 0;padding:0}
+.schedule li{display:grid;grid-template-columns:11.5rem 1fr auto 4.6rem;gap:12px;align-items:center;padding:9px 0;border-top:1px solid var(--line)}
+.schedule li:first-child{border-top:0}
+.schedule .t{font:500 .9rem var(--f-mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+.schedule .w{font-weight:600}
+.schedule .d{font:400 .85rem var(--f-mono);color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap}
+.schedule li.awake .w{font-weight:500;color:var(--awake-ink)}
+.schedule li.awake{padding:4px 0}
+.adj{display:flex;gap:4px;justify-content:flex-end}
+.adj button{width:28px;height:26px;font:600 .95rem/1 var(--f-body);color:var(--ink);background:var(--sky);border:1px solid var(--line);border-radius:7px;cursor:pointer;padding:0}
+.adj button:hover{border-color:var(--nap)}
+.tag{font:600 .62rem var(--f-body);text-transform:uppercase;letter-spacing:.08em;color:var(--nap);margin-left:8px}
+
+/* ---------- todoist ---------- */
+.send{padding:18px;display:flex;flex-direction:column;gap:14px}
+.send p{margin:0;color:var(--muted);max-width:68ch}
+.send-opts{display:flex;flex-wrap:wrap;gap:12px 28px;align-items:center}
+.opt-group{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center}
+.opt-group label{display:inline-flex;align-items:center;gap:6px;cursor:pointer}
+.opt-group input{accent-color:var(--nap);width:16px;height:16px;margin:0}
+.send-row{display:flex;flex-wrap:wrap;gap:10px 14px;align-items:center}
+.status{font-weight:500}
+.status.good{color:var(--ok)}
+.status.bad{color:var(--warn)}
+.code-row{max-width:240px}
+.confirm{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;background:var(--warn-bg);color:var(--warn);border-radius:10px;padding:10px 14px;font-weight:500}
+
+@media (max-width:520px){
+  .schedule li{grid-template-columns:5.6rem 1fr auto 4.4rem;gap:8px}
+  .schedule .t{white-space:normal}
+  h1{font-size:2rem}
+  .actions{margin-left:0}
+}
+@media (prefers-reduced-motion: reduce){.nap{transition:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Nap Plan</h1>
+    <p>Plan the day's naps between wake-up and bedtime.</p>
+  </header>
+
+  <section class="panel controls" aria-label="Day settings">
+    <div class="field">
+      <label for="wake">Wake up</label>
+      <input id="wake" type="time" step="300" value="07:00">
+    </div>
+    <div class="field">
+      <label for="bed">Bedtime</label>
+      <input id="bed" type="time" step="300" value="19:00">
+    </div>
+    <div class="field">
+      <label for="naps">Naps</label>
+      <div class="stepper">
+        <button type="button" id="napsDown" aria-label="One fewer nap">−</button>
+        <input id="naps" type="number" min="1" max="6" value="3" inputmode="numeric">
+        <button type="button" id="napsUp" aria-label="One more nap">+</button>
+      </div>
+    </div>
+    <div class="field">
+      <span class="lbl" id="goalLbl">Day sleep goal</span>
+      <div class="hm" role="group" aria-labelledby="goalLbl">
+        <input id="goalH" type="number" min="0" max="10" value="3" inputmode="numeric" aria-label="Hours">
+        <span>h</span>
+        <input id="goalM" type="number" min="0" max="55" step="5" value="15" inputmode="numeric" aria-label="Minutes">
+        <span>m</span>
+      </div>
+    </div>
+    <div class="field growth">
+      <label for="growth">Each awake window grows by</label>
+      <div class="row">
+        <input id="growth" type="range" min="0" max="45" step="5" value="15">
+        <output id="growthOut" for="growth">+15 min</output>
+      </div>
+    </div>
+  </section>
+
+  <section class="summary" aria-live="polite">
+    <div class="stat"><b id="sSleep">3h 15m</b><span id="sSleepLbl">day sleep</span></div>
+    <div class="stat"><b id="sAwake">8h 45m</b><span>awake</span></div>
+    <div class="stat"><b id="sLong">2h 30m</b><span>longest awake window</span></div>
+    <div class="actions">
+      <button class="btn" type="button" id="reset">Re-space all naps</button>
+    </div>
+  </section>
+  <div class="notice" id="notice" hidden></div>
+
+  <section class="panel timeline" id="timeline" aria-label="Day timeline">
+    <div class="track" id="track">
+      <div class="layer" id="marks"></div>
+      <div class="layer" id="napLayer"></div>
+    </div>
+    <p class="hint">Drag a nap to move it, or drag its edges to change its length. Drag an "awake" pill to make that awake window longer or shorter. The other naps adjust to keep your day sleep goal. A nap you've moved stays pinned in place; tap it to release it.</p>
+  </section>
+
+  <section class="panel schedule" aria-label="Schedule">
+    <h2>Today's schedule</h2>
+    <ol id="list"></ol>
+  </section>
+
+  <section class="panel send" aria-labelledby="sendTitle">
+    <h2 id="sendTitle">Send to Todoist</h2>
+    <p>Adds a timed task for each moment you pick, labeled <b>nap</b>, to your Todoist Inbox. The alerts reach your phone through the same reminder setup as your other tasks.</p>
+    <div class="send-opts">
+      <div class="opt-group" role="radiogroup" aria-label="Which day">
+        <span class="lbl">Day</span>
+        <label><input type="radio" name="day" id="dayToday" value="today" checked> Today</label>
+        <label><input type="radio" name="day" id="dayTomorrow" value="tomorrow"> Tomorrow</label>
+      </div>
+      <div class="opt-group" role="group" aria-label="Which moments">
+        <span class="lbl">Remind me when</span>
+        <label><input type="checkbox" id="optStart" checked> Naps start</label>
+        <label><input type="checkbox" id="optEnd" checked> Naps end</label>
+        <label><input type="checkbox" id="optBed" checked> Bedtime</label>
+      </div>
+    </div>
+    <div class="field code-row" id="codeRow" hidden>
+      <label for="passcode">Passcode</label>
+      <input id="passcode" type="password" autocomplete="current-password">
+    </div>
+    <div class="send-row">
+      <button class="btn primary" type="button" id="send" disabled>Add reminders to Todoist</button>
+      <span class="status" id="sendStatus" role="status"></span>
+    </div>
+    <div class="confirm" id="confirm" hidden>
+      <span id="confirmText"></span>
+      <button class="btn" type="button" id="confirmYes">Add another set</button>
+      <button class="btn" type="button" id="confirmNo">Cancel</button>
+    </div>
+  </section>
+</div>
+
+<script>
+(function(){
+const KEY = 'nap-plan-v1';
+const SENT_KEY = 'nap-plan-sent-v1';
+const MINW = 30;    // shortest awake window allowed (min)
+const MINNAP = 15;  // shortest nap allowed (min)
+const SNAP = 5;
+const $ = id => document.getElementById(id);
+const PIN_SVG = '<svg class="pin" viewBox="0 0 12 12" aria-hidden="true"><path fill="currentColor" d="M4 0h4v1.2L7.3 2v3l2.2 2v1.2H6.6V12h-1.2V8.2H2.5V7l2.2-2V2L4 1.2z"/></svg>';
+
+const blank = n => Array.from({length:n}, () => ({pinned:false, start:0, dur:0}));
+const defaults = () => ({wake:420, bed:1140, n:3, total:195, growth:15, naps:blank(3)});
+
+function load(){
+  try{
+    const v = JSON.parse(localStorage.getItem(KEY));
+    if (v && Array.isArray(v.naps) && v.naps.length === v.n && v.bed > v.wake) return v;
+  }catch(e){}
+  return null;
+}
+function save(){ try{ localStorage.setItem(KEY, JSON.stringify(S)); }catch(e){} }
+
+let S = load() || defaults();
+
+/* ---------- formatting ---------- */
+function clock(m){
+  m = ((Math.round(m) % 1440) + 1440) % 1440;
+  let h = Math.floor(m/60); const mm = m % 60;
+  const ap = h < 12 ? 'am' : 'pm'; h = h % 12 || 12;
+  return h + ':' + String(mm).padStart(2,'0') + ' ' + ap;
+}
+function short(m){
+  m = Math.round(m); let h = Math.floor(m/60) % 24, mm = m % 60;
+  const ap = h < 12 ? 'a' : 'p'; h = h % 12 || 12;
+  return mm ? h + ':' + String(mm).padStart(2,'0') : h + ap;
+}
+function dur(m){
+  m = Math.round(m); const neg = m < 0; m = Math.abs(m);
+  const h = Math.floor(m/60), mm = m % 60;
+  return (neg ? '−' : '') + (h ? h + 'h ' + String(mm).padStart(2,'0') + 'm' : mm + 'm');
+}
+const toMin = v => { const [h,m] = (v || '0:0').split(':').map(Number); return h*60 + m; };
+const toTime = m => String(Math.floor(m/60)).padStart(2,'0') + ':' + String(m % 60).padStart(2,'0');
+
+/* ---------- the layout engine ----------
+   Pinned naps keep their start and length. Unpinned naps share whatever sleep
+   is left of the goal equally. Between each pair of fixed points (wake, pinned
+   naps, bed) the awake time is split into windows that each grow by `growth`. */
+function compute(st){
+  const {wake, bed, n, growth, total} = st;
+  const naps = st.naps.map(p => p.pinned ? {...p} : {pinned:false, start:0, dur:0});
+  const pinnedSum = naps.reduce((a,p) => a + (p.pinned ? p.dur : 0), 0);
+  const free = naps.filter(p => !p.pinned).length;
+  const share = free ? (total - pinnedSum) / free : 0;
+  naps.forEach(p => { if (!p.pinned) p.dur = share; });
+
+  const windows = new Array(n + 1).fill(0);
+  const anchors = naps.map((p,i) => p.pinned ? i : -1).filter(i => i >= 0).concat([n]);
+  let prev = -1, prevEnd = wake;
+  for (const a of anchors){
+    const segEnd = a < n ? naps[a].start : bed;
+    let between = 0;
+    for (let i = prev + 1; i < a; i++) between += naps[i].dur;
+    const awake = segEnd - prevEnd - between;
+    const cnt = a - prev, steps = cnt * (cnt - 1) / 2;
+    let g = growth, base = (awake - g * steps) / cnt;
+    if (base < MINW && steps > 0){            // not room to grow that much: flatten
+      g = Math.max(0, (awake - cnt * MINW) / steps);
+      base = (awake - g * steps) / cnt;
+    }
+    let t = prevEnd;
+    for (let j = prev + 1; j <= a; j++){
+      const w = base + g * (j - prev - 1);
+      windows[j] = w; t += w;
+      if (j < a){ naps[j].start = t; t += naps[j].dur; }
+    }
+    prevEnd = a < n ? naps[a].start + naps[a].dur : bed;
+    prev = a;
+  }
+  const planned = naps.reduce((a,p) => a + p.dur, 0);
+  const ok = bed > wake && windows.every(w => w >= MINW - 0.01) && naps.every(p => p.dur >= MINNAP - 0.01);
+  return {naps, windows, ok, planned, wake, bed, total};
+}
+
+/* ---------- fields ---------- */
+const F = {wake:$('wake'), bed:$('bed'), naps:$('naps'), goalH:$('goalH'), goalM:$('goalM'), growth:$('growth')};
+
+function writeFields(){
+  F.wake.value = toTime(S.wake); F.bed.value = toTime(S.bed);
+  F.naps.value = S.n;
+  F.goalH.value = Math.floor(S.total/60); F.goalM.value = Math.round(S.total % 60);
+  F.growth.value = S.growth;
+  $('growthOut').textContent = S.growth ? '+' + S.growth + ' min' : 'Equal gaps';
+}
+
+let fieldError = '';
+function readFields(){
+  fieldError = '';
+  const wake = toMin(F.wake.value), bed = toMin(F.bed.value);
+  const n = Math.min(6, Math.max(1, parseInt(F.naps.value, 10) || 1));
+  const total = Math.max(0, (parseInt(F.goalH.value, 10) || 0) * 60 + Math.min(59, Math.max(0, parseInt(F.goalM.value, 10) || 0)));
+  const growth = parseInt(F.growth.value, 10) || 0;
+  $('growthOut').textContent = growth ? '+' + growth + ' min' : 'Equal gaps';
+  if (!F.wake.value || !F.bed.value){ fieldError = 'Enter both a wake-up time and a bedtime.'; return; }
+  if (bed <= wake){ fieldError = 'Bedtime needs to be later in the day than wake-up.'; return; }
+
+  const next = {...S, wake, bed, n, total, growth};
+  if (n !== S.n) next.naps = blank(n);
+  else if (total !== S.total && S.naps.every(p => p.pinned)) next.naps = blank(n); // goal changed and nothing left to absorb it
+  if (!compute(next).ok && next.naps.some(p => p.pinned)) next.naps = blank(n);   // pins no longer fit
+  S = next; save();
+}
+function onField(){ readFields(); render(); }
+['wake','bed','goalH','goalM','growth'].forEach(k => F[k].addEventListener('input', onField));
+F.naps.addEventListener('change', onField);
+function stepNaps(d){ F.naps.value = Math.min(6, Math.max(1, (parseInt(F.naps.value,10) || 1) + d)); onField(); }
+$('napsDown').addEventListener('click', () => stepNaps(-1));
+$('napsUp').addEventListener('click', () => stepNaps(1));
+$('reset').addEventListener('click', () => { S.naps = blank(S.n); save(); render(); });
+
+/* ---------- timeline ---------- */
+const timeline = $('timeline'), track = $('track'), marks = $('marks'), napLayer = $('napLayer');
+const mq = matchMedia('(max-width: 640px)');
+const vertical = () => mq.matches;
+const PX_PER_MIN_V = 1.05;
+let napEls = [], gapEls = [], view = null, preview = null;
+
+function place(el, a, b, span, wake){
+  const p0 = (a - wake) / span * 100, p1 = Math.max(0, b - a) / span * 100;
+  if (vertical()){ el.style.top = p0 + '%'; el.style.height = p1 + '%'; el.style.left = ''; el.style.width = ''; }
+  else { el.style.left = p0 + '%'; el.style.width = p1 + '%'; el.style.top = ''; el.style.height = ''; }
+}
+
+function bindDrag(el, target){
+  el.addEventListener('pointerdown', e => onDown(e, target));
+  el.addEventListener('pointermove', onMove);
+  el.addEventListener('pointerup', onUp);
+  el.addEventListener('pointercancel', onCancel);
+}
+
+function buildTrack(n){
+  napLayer.textContent = '';
+  napEls = []; gapEls = [];
+  for (let j = 0; j <= n; j++){
+    const gap = document.createElement('div');
+    gap.className = 'gap';
+    gap.innerHTML = '<button type="button" class="chip"><small>awake</small><span class="gv"></span></button>';
+    const chip = gap.firstChild;
+    bindDrag(chip, {type:'win', j});
+    chip.addEventListener('keydown', e => onWinKey(e, j));
+    napLayer.appendChild(gap);
+    gapEls.push(gap);
+  }
+  for (let k = 0; k < n; k++){
+    const el = document.createElement('div');
+    el.className = 'nap'; el.tabIndex = 0; el.setAttribute('role','button');
+    el.innerHTML = '<span class="h h-start" aria-hidden="true"></span>' + PIN_SVG +
+      '<span class="nm">Nap ' + (k+1) + '</span><span class="du"></span><span class="tm"></span>' +
+      '<span class="h h-end" aria-hidden="true"></span>';
+    bindDrag(el, {type:'nap', k});
+    el.addEventListener('keydown', e => onKey(e, k));
+    napLayer.appendChild(el);
+    napEls.push(el);
+  }
+}
+
+function render(){
+  const st = preview || S;
+  const r = compute(st);
+  view = r;
+  const {wake, bed} = st, span = bed - wake, n = st.n;
+  const vert = vertical();
+  timeline.classList.toggle('vertical', vert);
+  track.style.height = vert ? Math.max(480, span * PX_PER_MIN_V) + 'px' : '';
+  if (napEls.length !== n) buildTrack(n);
+  const size = vert ? track.clientHeight : track.clientWidth;
+
+  // ticks, ends, now
+  let html = '';
+  for (let h = Math.ceil(wake/60) * 60; h <= bed; h += 60){
+    if (h - wake < 20 || bed - h < 20) continue;
+    const p = (h - wake) / span * 100;
+    html += '<div class="tick" style="' + (vert ? 'top' : 'left') + ':' + p + '%"><i>' + short(h) + '</i></div>';
+  }
+  html += '<span class="end e-wake">Wake ' + short(wake) + '</span><span class="end e-bed">Bed ' + short(bed) + '</span>';
+  const d = new Date(), now = d.getHours() * 60 + d.getMinutes();
+  if (now > wake && now < bed) html += '<div class="now" style="' + (vert ? 'top' : 'left') + ':' + ((now - wake) / span * 100) + '%"></div>';
+  marks.innerHTML = html;
+
+  // awake windows
+  let t = wake;
+  r.windows.forEach((w, j) => {
+    const g = gapEls[j];
+    place(g, t, t + w, span, wake);
+    const px = Math.max(0, w) / span * size;
+    g.classList.toggle('tiny', vert ? px < 30 : px < 70);
+    g.querySelector('.gv').textContent = dur(w);
+    g.firstChild.setAttribute('aria-label', 'Awake window ' + (j+1) + ', ' + dur(w) + '. Arrow keys make it longer or shorter.');
+    if (j < n) t = r.naps[j].start + r.naps[j].dur;
+  });
+
+  // nap blocks
+  r.naps.forEach((p, k) => {
+    const el = napEls[k];
+    place(el, p.start, p.start + p.dur, span, wake);
+    const px = p.dur / span * size;
+    el.classList.toggle('pinned', !!st.naps[k].pinned);
+    el.classList.toggle('narrow', vert ? px < 52 : px < 104);
+    el.classList.toggle('slim', vert ? px < 36 : px < 46);
+    el.querySelector('.du').textContent = dur(p.dur);
+    el.querySelector('.tm').textContent = clock(p.start) + ' – ' + clock(p.start + p.dur);
+    el.setAttribute('aria-label', 'Nap ' + (k+1) + ', ' + clock(p.start) + ' to ' + clock(p.start + p.dur) + ', ' + dur(p.dur) +
+      (st.naps[k].pinned ? ', pinned. Enter to release.' : '. Enter to pin.') + ' Arrow keys move it; Shift plus arrow keys change its length.');
+  });
+
+  // summary
+  $('sSleep').textContent = dur(r.planned);
+  const off = Math.round(r.planned - st.total);
+  $('sSleepLbl').textContent = off ? 'day sleep (goal ' + dur(st.total) + ')' : 'day sleep';
+  $('sAwake').textContent = dur(span - r.planned);
+  $('sLong').textContent = dur(Math.max(...r.windows));
+  $('reset').disabled = !st.naps.some(p => p.pinned);
+
+  const notice = $('notice');
+  let msg = fieldError;
+  if (!msg && !r.ok) msg = "There isn't room for " + n + ' nap' + (n > 1 ? 's' : '') + ' and ' + dur(st.total) +
+      ' of day sleep between ' + clock(wake) + ' and ' + clock(bed) + ' with at least ' + MINW + ' minutes awake between sleeps. Try a smaller goal or fewer naps.';
+  else if (!msg && off) msg = 'Every nap is pinned, so the naps now add up to ' + dur(r.planned) + ' instead of your ' + dur(st.total) +
+      ' goal. Release a nap or press "Re-space all naps" to get back to the goal.';
+  notice.hidden = !msg; notice.textContent = msg;
+
+  if (!drag) renderList(r, st);
+  updateSend();
+}
+
+const adj = (kind, i, what) =>
+  '<span class="adj"><button type="button" data-kind="' + kind + '" data-i="' + i + '" data-dir="-1" aria-label="Shorten ' + what + ' by 5 minutes">−</button>' +
+  '<button type="button" data-kind="' + kind + '" data-i="' + i + '" data-dir="1" aria-label="Lengthen ' + what + ' by 5 minutes">+</button></span>';
+
+function renderList(r, st){
+  const rows = ['<li><span class="t">' + clock(st.wake) + '</span><span class="w">Wake up</span><span class="d"></span><span></span></li>'];
+  const awakeRow = j => '<li class="awake"><span class="t"></span><span class="w">Awake</span><span class="d">' + dur(r.windows[j]) + '</span>' +
+    (r.ok ? adj('win', j, 'awake window ' + (j+1)) : '<span></span>') + '</li>';
+  r.naps.forEach((p, k) => {
+    rows.push(awakeRow(k));
+    rows.push('<li><span class="t">' + clock(p.start) + ' – ' + clock(p.start + p.dur) +
+      '</span><span class="w">Nap ' + (k+1) + (st.naps[k].pinned ? '<span class="tag">Pinned</span>' : '') +
+      '</span><span class="d">' + dur(p.dur) + '</span>' + (r.ok ? adj('nap', k, 'nap ' + (k+1)) : '<span></span>') + '</li>');
+  });
+  rows.push(awakeRow(r.naps.length));
+  rows.push('<li><span class="t">' + clock(st.bed) + '</span><span class="w">Bedtime</span><span class="d"></span><span></span></li>');
+  $('list').innerHTML = rows.join('');
+}
+
+$('list').addEventListener('click', e => {
+  const b = e.target.closest('button[data-kind]');
+  if (!b || !view || !view.ok) return;
+  const i = +b.dataset.i, dir = +b.dataset.dir;
+  const d = b.dataset.kind === 'win' ? beginWin(i) : begin(i, 'end');
+  stepTo(d, Math.round(d.val / SNAP) * SNAP + dir * SNAP);
+  if (d.val !== d.orig) commit(d);
+  const again = $('list').querySelector('button[data-kind="' + b.dataset.kind + '"][data-i="' + i + '"][data-dir="' + dir + '"]');
+  if (again) again.focus();
+});
+
+/* ---------- dragging ---------- */
+let drag = null;
+
+// Build the state that results from setting this drag's value.
+function candidate(d, val){
+  const naps = S.naps.map(p => ({...p}));
+  const n = naps.length;
+  if (d.mode === 'window'){
+    if (d.j < n){
+      if (d.prev) naps[d.j - 1] = {pinned:true, ...d.prev};
+      naps[d.j] = {pinned:true, start:d.anchor + val, dur:d.dur};
+    } else {
+      naps[n - 1] = {pinned:true, start:S.bed - val - d.dur, dur:d.dur};
+    }
+  } else {
+    let start, len;
+    if (d.mode === 'move'){ start = val; len = d.dur; }
+    else if (d.mode === 'start'){ start = val; len = d.start + d.dur - val; }
+    else { start = d.start; len = val - d.start; }
+    naps[d.k] = {pinned:true, start, dur:len};
+  }
+  const st = {...S, naps};
+  if (naps.every(p => p.pinned)) st.total = naps.reduce((a,p) => a + p.dur, 0); // nothing left to absorb a resize
+  return st;
+}
+
+// Walk toward the target in snap steps, stopping at the last spot where everything still fits.
+function stepTo(d, target){
+  let cur = d.val;
+  while (cur !== target){
+    const next = target > cur ? Math.min(target, Math.floor(cur / SNAP) * SNAP + SNAP)
+                              : Math.max(target, Math.ceil(cur / SNAP) * SNAP - SNAP);
+    if (!compute(candidate(d, next)).ok) break;
+    cur = next;
+  }
+  d.val = cur;
+}
+
+function begin(k, mode){
+  const p = view.naps[k];
+  const val = mode === 'end' ? p.start + p.dur : p.start;
+  return {k, mode, start:p.start, dur:p.dur, val, orig:val, sign:1, moved:false};
+}
+
+// Dragging an awake window moves its far edge: the next nap, or for the last
+// window (which ends at bedtime) the nap before it. The nap on the other side holds still.
+function beginWin(j){
+  const n = view.naps.length, val = view.windows[j];
+  const d = {mode:'window', j, val, orig:val, sign:1, moved:false};
+  if (j < n){
+    d.dur = view.naps[j].dur;
+    d.prev = j > 0 ? {start:view.naps[j-1].start, dur:view.naps[j-1].dur} : null;
+    d.anchor = d.prev ? d.prev.start + d.prev.dur : S.wake;
+  } else {
+    d.dur = view.naps[n-1].dur;
+    d.sign = -1;
+  }
+  return d;
+}
+
+function commit(d){
+  S = candidate(d, d.val);
+  preview = null; save(); writeFields(); render();
+}
+
+function togglePin(k){
+  const naps = S.naps.map(p => ({...p}));
+  if (naps[k].pinned){
+    naps[k] = {pinned:false, start:0, dur:0};
+    if (!compute({...S, naps}).ok) return;
+  } else {
+    naps[k] = {pinned:true, start:view.naps[k].start, dur:view.naps[k].dur};
+  }
+  S = {...S, naps}; save(); render();
+}
+
+function onDown(e, target){
+  if (e.button > 0 || !view || !view.ok) return;
+  if (target.type === 'win') drag = beginWin(target.j);
+  else drag = begin(target.k, e.target.closest('.h-start') ? 'start' : e.target.closest('.h-end') ? 'end' : 'move');
+  drag.x = e.clientX; drag.y = e.clientY;
+  drag.el = e.currentTarget;
+  drag.el.setPointerCapture(e.pointerId);
+  e.preventDefault();
+}
+function onMove(e){
+  if (!drag) return;
+  const vert = vertical();
+  const deltaPx = vert ? e.clientY - drag.y : e.clientX - drag.x;
+  if (!drag.moved && Math.abs(deltaPx) < 5) return;
+  if (!drag.moved){ drag.moved = true; drag.el.classList.add('dragging'); }
+  const span = S.bed - S.wake;
+  const size = vert ? track.clientHeight : track.clientWidth;
+  // For the last awake window the free edge is its start, so dragging toward bedtime shortens it.
+  const target = Math.round((drag.orig + drag.sign * deltaPx / size * span) / SNAP) * SNAP;
+  stepTo(drag, target);
+  preview = candidate(drag, drag.val);
+  render();
+}
+function onUp(){
+  if (!drag) return;
+  const d = drag; drag = null;
+  d.el.classList.remove('dragging');
+  if (!d.moved){ preview = null; if (d.mode === 'move') togglePin(d.k); else render(); return; }
+  commit(d);
+}
+function onCancel(){
+  if (!drag) return;
+  drag.el.classList.remove('dragging');
+  drag = null; preview = null; render();
+}
+function onKey(e, k){
+  if (e.key === 'Enter' || e.key === ' '){ e.preventDefault(); togglePin(k); return; }
+  const back = e.key === 'ArrowLeft' || e.key === 'ArrowUp', fwd = e.key === 'ArrowRight' || e.key === 'ArrowDown';
+  if (!(back || fwd) || !view || !view.ok) return;
+  e.preventDefault();
+  const d = begin(k, e.shiftKey ? 'end' : 'move');
+  stepTo(d, Math.round(d.val / SNAP) * SNAP + (fwd ? SNAP : -SNAP));
+  if (d.val !== d.orig) commit(d);
+  napEls[k].focus();
+}
+function onWinKey(e, j){
+  const back = e.key === 'ArrowLeft' || e.key === 'ArrowDown', fwd = e.key === 'ArrowRight' || e.key === 'ArrowUp';
+  if (!(back || fwd) || !view || !view.ok) return;
+  e.preventDefault();
+  const d = beginWin(j);
+  stepTo(d, Math.round(d.val / SNAP) * SNAP + (fwd ? SNAP : -SNAP));
+  if (d.val !== d.orig) commit(d);
+  gapEls[j].firstChild.focus();
+}
+
+/* ---------- Todoist ----------
+   The page posts the day's moments to its own server, which adds them to
+   Todoist with the server's API token. The passcode keeps strangers out. */
+const CODE_KEY = 'nap-plan-passcode';
+let sending = false;
+const sendBtn = $('send'), sendStatus = $('sendStatus'), confirmBox = $('confirm');
+const codeRow = $('codeRow'), codeInput = $('passcode');
+
+function setStatus(text, tone){ sendStatus.textContent = text; sendStatus.className = 'status' + (tone ? ' ' + tone : ''); }
+
+function targetDay(){
+  const d = new Date();
+  if ($('dayTomorrow').checked) d.setDate(d.getDate() + 1);
+  return d;
+}
+const dayKey = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+const dueClock = m => clock(m).replace(' ', '');   // "9:05am"
+
+function plannedEvents(){
+  if (!view || !view.ok) return {list:[], skipped:0};
+  const list = [];
+  view.naps.forEach((p, k) => {
+    const len = Math.round(p.dur);
+    if ($('optStart').checked) list.push({at:p.start, content:'Nap ' + (k+1) + ' starts (' + dur(len) + ')', duration:len});
+    if ($('optEnd').checked) list.push({at:p.start + p.dur, content:'Nap ' + (k+1) + ' ends, time to wake up'});
+  });
+  if ($('optBed').checked) list.push({at:S.bed, content:'Bedtime'});
+  if (!$('dayToday').checked) return {list, skipped:0};
+  const d = new Date(), now = d.getHours() * 60 + d.getMinutes();
+  const upcoming = list.filter(ev => Math.round(ev.at) > now);
+  return {list:upcoming, skipped:list.length - upcoming.length};
+}
+
+function readSent(){ try{ return JSON.parse(localStorage.getItem(SENT_KEY)) || null; }catch(e){ return null; } }
+function writeSent(v){ try{ localStorage.setItem(SENT_KEY, JSON.stringify(v)); }catch(e){} }
+function readCode(){ try{ return localStorage.getItem(CODE_KEY) || ''; }catch(e){ return ''; } }
+function writeCode(v){ try{ if (v) localStorage.setItem(CODE_KEY, v); else localStorage.removeItem(CODE_KEY); }catch(e){} }
+codeRow.hidden = !!readCode();
+
+function updateSend(){
+  if (sending) return;
+  const {list, skipped} = plannedEvents();
+  sendBtn.textContent = list.length ? 'Add ' + list.length + ' reminder' + (list.length > 1 ? 's' : '') + ' to Todoist' : 'Add reminders to Todoist';
+  sendBtn.disabled = !list.length;
+  if (!view || !view.ok) setStatus('Fix the schedule above before sending it.', 'bad');
+  else if (!list.length) setStatus(skipped ? 'Every moment you picked for today has already passed. Choose Tomorrow instead.' : 'Pick at least one kind of reminder.');
+  else if (skipped) setStatus(skipped + ' already passed today and will be left out.');
+  else if (!sendStatus.classList.contains('good') && !sendStatus.classList.contains('bad')) setStatus('');
+}
+
+async function send(){
+  const {list} = plannedEvents();
+  if (!list.length) return;
+  const code = readCode() || codeInput.value.trim();
+  confirmBox.hidden = true;
+  if (!code){
+    codeRow.hidden = false; codeInput.focus();
+    setStatus('Enter the passcode to send reminders.', 'bad');
+    return;
+  }
+  const word = $('dayTomorrow').checked ? 'tomorrow' : 'today';
+  const day = dayKey(targetDay());
+  const tasks = list.map(ev => ({content:ev.content, dueString:word + ' at ' + dueClock(ev.at), duration:ev.duration}));
+  const n = tasks.length, plural = n > 1 ? 's' : '';
+  sending = true; sendBtn.disabled = true;
+  setStatus('Adding ' + n + ' reminder' + plural + '…');
+
+  let res, body = {};
+  try{
+    res = await fetch('/api/todoist/tasks', {
+      method:'POST',
+      headers:{'Content-Type':'application/json', 'X-Nap-Passcode':code},
+      body:JSON.stringify({tasks})
+    });
+    body = await res.json().catch(() => ({}));
+  }catch(e){
+    sending = false;
+    setStatus("Couldn't reach the Nap Plan server, so some reminders may have been added anyway. Check your Todoist Inbox before trying again.", 'bad');
+    updateSend();
+    return;
+  }
+  sending = false;
+  const added = body.added || 0;
+  if (added) writeSent({day, at:Date.now(), count:added});
+
+  if (res.ok){
+    writeCode(code); codeRow.hidden = true; codeInput.value = '';
+    setStatus('Added ' + n + ' reminder' + plural + ' for ' + word + '. Find them in your Todoist Inbox under the nap label.', 'good');
+  } else if (res.status === 401){
+    writeCode(''); codeRow.hidden = false; codeInput.value = ''; codeInput.focus();
+    setStatus("That passcode didn't match. Enter it again.", 'bad');
+  } else if (res.status === 429){
+    setStatus('Too many wrong passcodes. Wait 10 minutes, then try again.', 'bad');
+  } else if (res.status === 503){
+    setStatus(body.error || "The server isn't set up to send reminders yet.", 'bad');
+  } else if (added){
+    setStatus('Added ' + added + ' of ' + n + ' reminders, then Todoist stopped (' + (body.error || 'no reason given') + '). Check your Inbox before sending the rest.', 'bad');
+  } else {
+    setStatus("Todoist didn't add the reminders (" + (body.error || 'the server answered ' + res.status) + ').', 'bad');
+  }
+  updateSend();
+}
+
+sendBtn.addEventListener('click', () => {
+  const sent = readSent(), day = dayKey(targetDay());
+  if (sent && sent.day === day){
+    const when = new Date(sent.at);
+    $('confirmText').textContent = 'You already added ' + sent.count + ' reminders for this day at ' +
+      clock(when.getHours() * 60 + when.getMinutes()) + '. Sending again adds a second set; delete the old ones in Todoist first if your plan changed.';
+    confirmBox.hidden = false;
+    $('confirmYes').focus();
+    return;
+  }
+  send();
+});
+$('confirmYes').addEventListener('click', send);
+$('confirmNo').addEventListener('click', () => { confirmBox.hidden = true; sendBtn.focus(); });
+codeInput.addEventListener('keydown', e => { if (e.key === 'Enter'){ e.preventDefault(); sendBtn.click(); } });
+['dayToday','dayTomorrow','optStart','optEnd','optBed'].forEach(id => $(id).addEventListener('change', () => { confirmBox.hidden = true; setStatus(''); updateSend(); }));
+
+mq.addEventListener('change', render);
+window.addEventListener('resize', () => { if (!drag) render(); });
+setInterval(() => { if (!drag) render(); }, 60000);
+
+writeFields();
+render();
+})();
+</script>
+</body>
+</html>

@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What This Repo Is
 
-`zb-ai-assistant` is a **monorepo** of personal AI-assistant tooling. It holds four kinds of things:
+`zb-ai-assistant` is a **monorepo** of personal AI-assistant tooling. It holds these kinds of things:
 
 | Directory | What it is |
 |-----------|-----------|
@@ -12,12 +12,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | `skills/` | Packaged **skills** — a `SKILL.md` playbook plus `scripts/` — invoked via the `Skill` tool. |
 | `tz-reminder/` | **Service:** daily task-reminder emails (Google Apps Script + Python fallback). |
 | `todoist-router/` | **Service:** Todoist `reminder:fired` webhook → priority/label-routed Pushcut notifications (Node/Express on Railway). |
+| `nap-plan/` | **Service:** baby nap planner page + endpoint that adds `nap`-labeled Todoist tasks (plain Node on Railway). |
 
 See `README.md` for the user-facing how-to on the services and a catalog of every skill/agent.
 
 ## Git & secrets
 
-Single repo, single history (`github.com/zachbines/zb-ai-assistant`). One **root `.gitignore`** protects every secret — never commit `todoist-router/.env` or `tz-reminder/config.json`. Templates (`.env.example`, `config.example.json`) are the committed stand-ins. Before adding any new tool that needs credentials, add its secret file to the root `.gitignore` and commit only an example template.
+Single repo, single history (`github.com/zachbines/zb-ai-assistant`). One **root `.gitignore`** protects every secret — never commit `todoist-router/.env`, `nap-plan/.env` or `tz-reminder/config.json`. Templates (`.env.example`, `config.example.json`) are the committed stand-ins. Before adding any new tool that needs credentials, add its secret file to the root `.gitignore` and commit only an example template.
 
 ## Agents (`agents/`)
 
@@ -56,3 +57,4 @@ Each skill is a directory with a `SKILL.md` (frontmatter `name` + `description`,
 Each service has its own `CLAUDE.md` with architecture and deploy detail:
 - `tz-reminder/` — element-based Google Doc parsing, freshness guard, Gmail send, optional Todoist push. Live version is the Apps Script (`tz_reminder.gs`), bound to the Doc.
 - `todoist-router/CLAUDE.md` — webhook HMAC verification, ack-before-work, and the **declarative Pushcut routing table** in `routes.js` (the one place to add new alert types).
+- `nap-plan/README.md` — single-page app (`public/index.html`) plus a dependency-free server that adds passcode-protected `nap` tasks to Todoist; the router's `nap` rule picks the sound.
