@@ -49,7 +49,8 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--f-body);fo
   padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px));padding-block:20px 40px}
 body.sheet-open{padding-bottom:230px}
 .wrap{max-width:980px;margin:0 auto;display:flex;flex-direction:column;gap:16px}
-button{font-family:inherit}
+button{font-family:inherit;touch-action:manipulation}
+.track, .sheet, .settings, .seg, .chips{touch-action:manipulation}
 :focus-visible{outline:2px solid var(--nap);outline-offset:2px}
 .lbl{font-size:.68rem;font-weight:600;text-transform:uppercase;letter-spacing:.09em;color:var(--muted)}
 .panel{background:var(--surface);border:1px solid var(--line);border-radius:18px}
@@ -287,7 +288,7 @@ input[type=range]{flex:1;accent-color:var(--nap);min-width:0;min-height:28px}
       <div class="layer" id="marks"></div>
       <div class="layer" id="napLayer"></div>
     </div>
-    <p class="hint">Drag a nap or its edges, or tap it for exact controls. Use − and + to change an awake window. Naps you change stay pinned; the rest re-space to keep your sleep goal.</p>
+    <p class="hint">Drag a nap or its edges, or tap it for exact controls. Use − and + to change an awake window. Day sleep always stays on your goal: when one nap gets shorter, the others get longer. Naps you move stay pinned in place.</p>
   </section>
 
   <section class="panel schedule" aria-label="Schedule">
@@ -364,13 +365,20 @@ const SNAP = 5;
 const $ = id => document.getElementById(id);
 const PIN_SVG = '<svg class="pin" viewBox="0 0 12 12" aria-hidden="true"><path fill="currentColor" d="M4 0h4v1.2L7.3 2v3l2.2 2v1.2H6.6V12h-1.2V8.2H2.5V7l2.2-2V2L4 1.2z"/></svg>';
 
-const blank = n => Array.from({length:n}, () => ({pinned:false, start:0, dur:0}));
+const blank = n => Array.from({length:n}, () => ({pinned:false, durSet:false, start:0, dur:0}));
 const defaults = () => ({wake:420, bed:1140, n:3, total:195, growth:15, naps:blank(3)});
 
 function load(){
   try{
     const v = JSON.parse(localStorage.getItem(KEY));
-    if (v && Array.isArray(v.naps) && v.naps.length === v.n && v.bed > v.wake) return v;
+    if (v && Array.isArray(v.naps) && v.naps.length === v.n && v.bed > v.wake){
+      // Older saves pinned start and length together.
+      v.naps.forEach(p => { if (p.durSet === undefined) p.durSet = !!p.pinned; });
+      // If every length is set but they don't add up to the goal, let them share it again.
+      const sum = v.naps.reduce((a,p) => a + p.dur, 0);
+      if (v.naps.every(p => p.durSet) && Math.round(sum) !== v.total) v.naps.forEach(p => { p.durSet = false; });
+      return v;
+    }
   }catch(e){}
   return null;
 }
@@ -403,17 +411,17 @@ const toMin = v => { const [h,m] = (v || '0:0').split(':').map(Number); return h
 const toTime = m => String(Math.floor(m/60)).padStart(2,'0') + ':' + String(m % 60).padStart(2,'0');
 
 /* ---------- the layout engine ----------
-   Pinned naps keep their start and length. Unpinned naps share whatever sleep
-   is left of the goal, in 5-minute pieces. Between each pair of fixed points
+   A nap whose length you set keeps it; the others share whatever sleep is
+   left of the goal, in 5-minute pieces. Pinned naps keep their start. Between each pair of fixed points
    (wake, pinned naps, bed) the awake time is split into windows that each grow
    by `growth`; unpinned starts then snap to the 5-minute grid. */
 function compute(st){
   const {wake, bed, n, growth, total} = st;
-  const naps = st.naps.map(p => p.pinned ? {...p} : {pinned:false, start:0, dur:0});
-  const pinnedSum = naps.reduce((a,p) => a + (p.pinned ? p.dur : 0), 0);
-  const freeIdx = naps.map((p,i) => p.pinned ? -1 : i).filter(i => i >= 0);
+  const naps = st.naps.map(p => ({pinned:!!p.pinned, durSet:!!p.durSet, start:p.pinned ? p.start : 0, dur:p.durSet ? p.dur : 0}));
+  const setSum = naps.reduce((a,p) => a + (p.durSet ? p.dur : 0), 0);
+  const freeIdx = naps.map((p,i) => p.durSet ? -1 : i).filter(i => i >= 0);
   if (freeIdx.length){
-    const remain = total - pinnedSum;
+    const remain = total - setSum;
     const each = Math.floor(remain / freeIdx.length / SNAP) * SNAP;
     let extra = remain - each * freeIdx.length;
     freeIdx.forEach(i => { naps[i].dur = each; if (extra >= SNAP){ naps[i].dur += SNAP; extra -= SNAP; } });
@@ -477,8 +485,8 @@ function readFields(){
 
   const next = {...S, wake, bed, n, total, growth};
   if (n !== S.n) next.naps = blank(n);
-  else if (total !== S.total && S.naps.every(p => p.pinned)) next.naps = blank(n); // goal changed and nothing left to absorb it
-  if (!compute(next).ok && next.naps.some(p => p.pinned)) next.naps = blank(n);   // pins no longer fit
+  else if (total !== S.total) next.naps = S.naps.map(p => ({...p, durSet:false}));   // new goal: lengths share it again
+  if (!compute(next).ok && next.naps.some(p => p.pinned || p.durSet)) next.naps = blank(n);   // pins no longer fit
   S = next; save();
 }
 function onField(){ readFields(); render(); }
@@ -617,13 +625,13 @@ function render(){
   $('sNaps').textContent = n;
   $('sAwake').textContent = dur(span - r.planned);
   $('sLong').textContent = dur(Math.max(...r.windows));
-  $('reset').disabled = !st.naps.some(p => p.pinned);
+  $('reset').disabled = !st.naps.some(p => p.pinned || p.durSet);
 
   const notice = $('notice');
   let msg = fieldError;
   if (!msg && !r.ok) msg = "There isn't room for " + n + ' nap' + (n > 1 ? 's' : '') + ' and ' + dur(st.total) +
       ' of day sleep between ' + clock(wake) + ' and ' + clock(bed) + ' with at least ' + MINW + ' minutes awake between sleeps. Try a smaller goal or fewer naps.';
-  else if (!msg && off) msg = 'Every nap is pinned, so the naps add up to ' + dur(r.planned) + ' instead of your ' + dur(st.total) +
+  else if (!msg && off) msg = 'The naps add up to ' + dur(r.planned) + ' instead of your ' + dur(st.total) +
       ' goal. Press "Re-space naps" to get back to the goal.';
   notice.hidden = !msg; notice.textContent = msg;
 
@@ -692,27 +700,42 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape' && selected !
 /* ---------- adjusting ---------- */
 let drag = null;
 
-// Build the state that results from setting this adjustment's value.
+// Build the state that results from setting this adjustment's value, or null if it can't keep the goal.
+// Moving a nap or an awake window pins nap starts; resizing a nap also sets its length,
+// and the other naps make up the difference so day sleep stays on the goal.
 function candidate(d, val){
   const naps = S.naps.map(p => ({...p}));
   const n = naps.length;
   if (d.mode === 'window'){
     if (d.j < n){
-      if (d.prev) naps[d.j - 1] = {pinned:true, ...d.prev};
-      naps[d.j] = {pinned:true, start:d.anchor + val, dur:d.dur};
+      if (d.prev) naps[d.j - 1] = {...naps[d.j - 1], pinned:true, start:d.prev.start};
+      naps[d.j] = {...naps[d.j], pinned:true, start:d.anchor + val};
     } else {
-      naps[n - 1] = {pinned:true, start:S.bed - val - d.dur, dur:d.dur};
+      naps[n - 1] = {...naps[n - 1], pinned:true, start:S.bed - val - d.dur};
     }
+  } else if (d.mode === 'move'){
+    naps[d.k] = {...naps[d.k], pinned:true, start:val};
   } else {
-    let start, len;
-    if (d.mode === 'move'){ start = val; len = d.dur; }
-    else if (d.mode === 'start'){ start = val; len = d.start + d.dur - val; }
-    else { start = d.start; len = val - d.start; }
-    naps[d.k] = {pinned:true, start, dur:len};
+    const start = d.mode === 'start' ? val : d.start;
+    const len = d.mode === 'start' ? d.start + d.dur - val : val - d.start;
+    naps[d.k] = {...naps[d.k], pinned:true, start, dur:len, durSet:true};
+    // Naps without a set length already share the remainder. If every other nap has
+    // a set length, take the difference from the next nap (then later ones, then earlier).
+    if (naps.every((p, i) => i === d.k || p.durSet)){
+      let change = d.dur - len;
+      const order = [];
+      for (let i = d.k + 1; i < n; i++) order.push(i);
+      for (let i = d.k - 1; i >= 0; i--) order.push(i);
+      for (const i of order){
+        if (!change) break;
+        const before = d.lens[i], after = Math.max(MINNAP, before + change);
+        naps[i] = {...naps[i], dur:after};
+        change -= after - before;
+      }
+      if (change) return null;
+    }
   }
-  const st = {...S, naps};
-  if (naps.every(p => p.pinned)) st.total = naps.reduce((a,p) => a + p.dur, 0); // nothing left to absorb a resize
-  return st;
+  return {...S, naps};
 }
 
 // Walk toward the target in snap steps, stopping at the last spot where everything still fits.
@@ -721,7 +744,8 @@ function stepTo(d, target){
   while (cur !== target){
     const next = target > cur ? Math.min(target, Math.floor(cur / SNAP) * SNAP + SNAP)
                               : Math.max(target, Math.ceil(cur / SNAP) * SNAP - SNAP);
-    if (!compute(candidate(d, next)).ok) break;
+    const c = candidate(d, next);
+    if (!c || !compute(c).ok) break;
     cur = next;
   }
   d.val = cur;
@@ -730,7 +754,7 @@ function stepTo(d, target){
 function begin(k, mode){
   const p = view.naps[k];
   const val = mode === 'end' ? p.start + p.dur : p.start;
-  return {k, mode, start:p.start, dur:p.dur, val, orig:val, sign:1, moved:false};
+  return {k, mode, start:p.start, dur:p.dur, lens:view.naps.map(q => q.dur), val, orig:val, sign:1, moved:false};
 }
 
 // Changing an awake window moves its far edge: the next nap, or for the last
@@ -771,10 +795,10 @@ function nudgeWin(j, dir){
 function togglePin(k){
   const naps = S.naps.map(p => ({...p}));
   if (naps[k].pinned){
-    naps[k] = {pinned:false, start:0, dur:0};
+    naps[k] = {pinned:false, durSet:false, start:0, dur:0};
     if (!compute({...S, naps}).ok) return;
   } else {
-    naps[k] = {pinned:true, start:view.naps[k].start, dur:view.naps[k].dur};
+    naps[k] = {...naps[k], pinned:true, start:view.naps[k].start};
   }
   S = {...S, naps}; save(); render();
 }
