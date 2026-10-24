@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>Nap Plan</title>
 <meta name="theme-color" content="#3E4FB0">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -49,8 +49,9 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--f-body);fo
   padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px));padding-block:20px 40px}
 body.sheet-open{padding-bottom:230px}
 .wrap{max-width:980px;margin:0 auto;display:flex;flex-direction:column;gap:16px}
-button{font-family:inherit;touch-action:manipulation}
-.track, .sheet, .settings, .seg, .chips{touch-action:manipulation}
+/* The app never zooms: no double-tap zoom anywhere (pinch is blocked in the script). */
+html{touch-action:manipulation}
+button{font-family:inherit}
 :focus-visible{outline:2px solid var(--nap);outline-offset:2px}
 .lbl{font-size:.68rem;font-weight:600;text-transform:uppercase;letter-spacing:.09em;color:var(--muted)}
 .panel{background:var(--surface);border:1px solid var(--line);border-radius:18px}
@@ -981,6 +982,10 @@ $('confirmYes').addEventListener('click', send);
 $('confirmNo').addEventListener('click', () => { confirmBox.hidden = true; sendBtn.focus(); });
 codeInput.addEventListener('keydown', e => { if (e.key === 'Enter'){ e.preventDefault(); sendBtn.click(); } });
 ['dayToday','dayTomorrow','optStart','optEnd','optBed'].forEach(id => $(id).addEventListener('change', () => { confirmBox.hidden = true; setStatus(''); updateSend(); }));
+
+// iOS Safari ignores user-scalable=no, so cancel its pinch gestures directly.
+['gesturestart', 'gesturechange', 'gestureend'].forEach(t => document.addEventListener(t, e => e.preventDefault(), {passive:false}));
+document.addEventListener('touchmove', e => { if (e.touches.length > 1) e.preventDefault(); }, {passive:false});
 
 mq.addEventListener('change', render);
 window.addEventListener('resize', () => { if (!drag) render(); });
